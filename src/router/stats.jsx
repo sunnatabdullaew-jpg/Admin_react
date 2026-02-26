@@ -1,5 +1,5 @@
 const DashboardStats = () => {
-  return <p>Bu dashboard ichidagi Stats sahifa.</p>;
+  return <p>nothing</p>;
 };
 
 export default DashboardStats;

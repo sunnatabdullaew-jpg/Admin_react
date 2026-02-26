@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Navigate,
   NavLink,
@@ -7,6 +7,8 @@ import {
   Routes,
   useNavigate,
 } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import DashboardProfile from "../router/profil";
 import DashboardSetting from "../router/setting";
 import DashboardStats from "../router/stats";
@@ -88,6 +90,14 @@ function LoginPage() {
     setCredentials((prev) => ({ ...prev, [name]: value }));
   };
 
+  const applyDemoCredentials = () => {
+    setCredentials({
+      username: "miar",
+      password: "miarpass",
+    });
+    setError("");
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -125,6 +135,7 @@ function LoginPage() {
       }
 
       localStorage.setItem(TOKEN_KEY, token);
+      toast.success("Successfully logged in");
       navigate(PATHS.dashboard, { replace: true });
     } catch (requestError) {
       const message =
@@ -139,32 +150,66 @@ function LoginPage() {
 
   return (
     <div className="login-page">
-      <form className="login-card" onSubmit={handleSubmit}>
-        <h1>Login</h1>
-        <p className="login-hint">Test login: miar / miarpass</p>
-        <input
-          className="input"
-          type="text"
-          name="username"
-          placeholder="username"
-          value={credentials.username}
-          onChange={handleChange}
-          autoComplete="username"
-        />
-        <input
-          className="input"
-          type="password"
-          name="password"
-          placeholder="password"
-          value={credentials.password}
-          onChange={handleChange}
-          autoComplete="current-password"
-        />
-        <button className="submit-btn" type="submit" disabled={isLoading}>
-          {isLoading ? "Loading..." : "Login"}
-        </button>
-        {error ? <p className="message message-error">{error}</p> : null}
-      </form>
+      <div className="login-wrap">
+        <section className="login-side">
+          <p className="login-kicker">Admin Control</p>
+          <h2>Panelga xavfsiz kirish</h2>
+          <p>
+            Loyihangiz statistikasi, profilingiz va sozlamalaringiz bitta
+            zamonaviy panel ichida boshqariladi.
+          </p>
+          <div className="login-points">
+            <span>Real-time dashboard</span>
+            <span>Protected routes</span>
+            <span>Token auth</span>
+          </div>
+        </section>
+
+        <form className="login-card" onSubmit={handleSubmit}>
+          <h1>Welcome Back</h1>
+          <p className="login-hint">Tizimga kirish uchun hisobingizni tasdiqlang.</p>
+          <label className="field-label" htmlFor="username">
+            Username
+          </label>
+          <input
+            id="username"
+            className="input"
+            type="text"
+            name="username"
+            placeholder="username"
+            value={credentials.username}
+            onChange={handleChange}
+            autoComplete="username"
+          />
+          <label className="field-label" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            className="input"
+            type="password"
+            name="password"
+            placeholder="password"
+            value={credentials.password}
+            onChange={handleChange}
+            autoComplete="current-password"
+          />
+          <div className="login-actions">
+            <button className="submit-btn" type="submit" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </button>
+            <button
+              className="ghost-btn"
+              type="button"
+              onClick={applyDemoCredentials}
+            >
+              Demo account
+            </button>
+          </div>
+          <p className="login-note">Test login: miar / miarpass</p>
+          {error ? <p className="message message-error">{error}</p> : null}
+        </form>
+      </div>
     </div>
   );
 }
@@ -213,7 +258,69 @@ function DashboardLayout() {
 }
 
 function DashboardOverview() {
-  return <p>Dashboard ichidagi asosiy nested sahifa (overview).</p>;
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("https://fakestoreapi.com/products");
+        if (!response.ok) {
+          throw new Error("Failed to fetch products.");
+        }
+
+        const data = await response.json();
+        if (isMounted) {
+          setProducts(Array.isArray(data) ? data : []);
+        }
+      } catch (requestError) {
+        if (isMounted) {
+          const message =
+            requestError instanceof Error
+              ? requestError.message
+              : "Something went wrong while loading products.";
+          setError(message);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchProducts();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (isLoading) {
+    return <p>Loading products...</p>;
+  }
+
+  if (error) {
+    return <p className="message message-error">{error}</p>;
+  }
+
+  return (
+    <div>
+      <p>Latest products from Fake Store API.</p>
+      <div className="overview-grid">
+        {products.slice(0, 8).map((product) => (
+          <article key={product.id} className="overview-item">
+            <h4>{product.title}</h4>
+            <p>${Number(product.price).toFixed(2)}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function FallbackRedirect() {
@@ -222,26 +329,29 @@ function FallbackRedirect() {
 
 function Routs() {
   return (
-    <Routes>
-      <Route element={<GuestOnly />}>
-        <Route path={PATHS.login} element={<LoginPage />} />
-      </Route>
+    <>
+      <Routes>
+        <Route element={<GuestOnly />}>
+          <Route path={PATHS.login} element={<LoginPage />} />
+        </Route>
 
-      <Route element={<RequireAuth />}>
-        <Route element={<MainLayout />}>
-          <Route path={PATHS.home} element={<HomePage />} />
-          <Route path={PATHS.about} element={<AboutPage />} />
-          <Route path={PATHS.dashboard} element={<DashboardLayout />}>
-            <Route index element={<DashboardOverview />} />
-            <Route path="profile" element={<DashboardProfile />} />
-            <Route path="settings" element={<DashboardSetting />} />
-            <Route path="stats" element={<DashboardStats />} />
+        <Route element={<RequireAuth />}>
+          <Route element={<MainLayout />}>
+            <Route path={PATHS.home} element={<HomePage />} />
+            <Route path={PATHS.about} element={<AboutPage />} />
+            <Route path={PATHS.dashboard} element={<DashboardLayout />}>
+              <Route index element={<DashboardOverview />} />
+              <Route path="profile" element={<DashboardProfile />} />
+              <Route path="settings" element={<DashboardSetting />} />
+              <Route path="stats" element={<DashboardStats />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<FallbackRedirect />} />
-    </Routes>
+        <Route path="*" element={<FallbackRedirect />} />
+      </Routes>
+      <ToastContainer position="top-right" autoClose={2000} />
+    </>
   );
 }
 
